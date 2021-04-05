@@ -68,6 +68,10 @@ const createRecord = async (client, bucket) => {
   console.log("Added new record!", result);
 };
 
+const printSuccessMessage = () => {
+  console.log("Script finished successfully!");
+}
+
 /**
  * The runner for the script.
  * 
@@ -105,6 +109,7 @@ const main = async () => {
       }
       if (areNewRecords) {
         updateRecord(client, bucket, newRecord);
+        printSuccessMessage();
         return 0;
       } else {
         for (let i = 0; i < githubRecords.length; i++) {
@@ -113,6 +118,7 @@ const main = async () => {
           areNewRecords = !arrayEquals(a,b);
           if (areNewRecords) {
             updateRecord(client, bucket, newRecord);
+            printSuccessMessage();
             return 0;
           }
         }
@@ -125,6 +131,7 @@ const main = async () => {
     console.error(e);
     return 1;
   }
+  printSuccessMessage();
   return 0;
 };
 
