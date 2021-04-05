@@ -3,7 +3,7 @@ const btoa = require("btoa");
 const fetch = require("node-fetch");
 const AppConstants = require("./app-constants");
 
-const WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION = "websites-with-shared-credential-backends-1";
+const WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION = "websites-with-shared-credential-backends";
 /** @type {String} */
 const FX_RS_WRITER_USER = AppConstants.FX_REMOTE_SETTINGS_WRITER_USER;
 /** @type {String} */
