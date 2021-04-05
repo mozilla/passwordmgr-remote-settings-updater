@@ -65,7 +65,7 @@ const createRecord = async (client, bucket) => {
   });
   const postServerData = await client.bucket(bucket).collection(WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION).getData();
   await client.bucket(bucket).collection(WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION).setData({status: "to-review", last_modified: postServerData.last_modified}, {patch: true});
-  console.log("Added new record!", result);
+  console.log(`Added new record to ${WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION}`, result);
 };
 
 const printSuccessMessage = () => {
