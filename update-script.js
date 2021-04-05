@@ -3,9 +3,12 @@ const btoa = require("btoa");
 const fetch = require("node-fetch");
 const AppConstants = require("./app-constants");
 
-const WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION = "websites-with-shared-credential-backends";
+const WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION = "websites-with-shared-credential-backends-1";
+/** @type {String} */
 const FX_RS_WRITER_USER = AppConstants.FX_REMOTE_SETTINGS_WRITER_USER;
+/** @type {String} */
 const FX_RS_WRITER_PASS = AppConstants.FX_REMOTE_SETTINGS_WRITER_PASS;
+/** @type {String} */
 const SERVER_ADDRESS = AppConstants.FX_REMOTE_SETTINGS_WRITER_SERVER;
 
 const APPLE_API_ENDPOINT = "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/websites-with-shared-credential-backends.json";
@@ -13,7 +16,7 @@ const APPLE_API_ENDPOINT = "https://api.github.com/repos/apple/password-manager-
 /**
  * Fetches the source records from the APPLE_API_ENDPOINT
  *
- * @return {JSON} 
+ * @return {String[][]} 
  */
 const getSourceRecords = async () => {
   const response = await fetch(APPLE_API_ENDPOINT, {
