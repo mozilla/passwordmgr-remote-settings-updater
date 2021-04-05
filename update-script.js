@@ -74,7 +74,10 @@ const createRecord = (client, bucket) => {
  * @return {Number} 0 for success, 1 for failure.
  */
 const main = async () => {
-
+  if (FX_RS_WRITER_USER === "" || FX_RS_WRITER_PASS === "") {
+    console.error("No username or password set, quitting!");
+    return 1;
+  }
   const bucket = "main-workspace";
   const secretString = `${FX_RS_WRITER_USER}:${FX_RS_WRITER_PASS}`;
   try {
