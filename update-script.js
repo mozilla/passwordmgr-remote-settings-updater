@@ -41,7 +41,7 @@ const arrayEquals = (a, b) => {
  * @param {string} newRecord.id ID from the current related realms object from the Remote Settings server
  * @param {string[][]} newRecord.relatedRealms Updated related realms array from GitHub
  */
-const updateRecord = (client, bucket, newRecord) => {
+const updateRecord = async (client, bucket, newRecord) => {
   await client.bucket(bucket).collection(WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION).updateRecord(newRecord);
   const postServerData = await client.bucket(bucket).collection(WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION).getData();
   const setDataObject = {
@@ -58,7 +58,7 @@ const updateRecord = (client, bucket, newRecord) => {
  * @param {KintoClient} client
  * @param {string} bucket
  */
-const createRecord = (client, bucket) => {
+const createRecord = async (client, bucket) => {
   let githubRecords = await getSourceRecords();
   const result = await client.bucket(bucket).collection(WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION).createRecord({
     relatedRealms: githubRecords
