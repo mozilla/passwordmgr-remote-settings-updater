@@ -3,7 +3,7 @@ const btoa = require("btoa");
 const fetch = require("node-fetch");
 const AppConstants = require("./app-constants");
 
-const WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION = "websites-with-shared-credential-backends";
+const COLLECTION_ID = "websites-with-shared-credential-backends";
 /** @type {String} */
 const FX_RS_WRITER_USER = AppConstants.FX_REMOTE_SETTINGS_WRITER_USER;
 /** @type {String} */
@@ -45,14 +45,14 @@ const arrayEquals = (a, b) => {
  * @param {string[][]} newRecord.relatedRealms Updated related realms array from GitHub
  */
 const updateRecord = async (client, bucket, newRecord) => {
-  await client.bucket(bucket).collection(WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION).updateRecord(newRecord);
-  const postServerData = await client.bucket(bucket).collection(WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION).getData();
+  await client.bucket(bucket).collection(COLLECTION_ID).updateRecord(newRecord);
+  const postServerData = await client.bucket(bucket).collection(COLLECTION_ID).getData();
   const setDataObject = {
     status: "to-review",
     last_modified: postServerData.last_modified
   };
-  await client.bucket(bucket).collection(WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION).setData(setDataObject, {patch: true});
-  console.log(`Found new records, committing changes to ${WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION} collection.`);
+  await client.bucket(bucket).collection(COLLECTION_ID).setData(setDataObject, {patch: true});
+  console.log(`Found new records, committing changes to ${COLLECTION_ID} collection.`);
 };
 
 /**
@@ -63,12 +63,12 @@ const updateRecord = async (client, bucket, newRecord) => {
  */
 const createRecord = async (client, bucket) => {
   let githubRecords = await getSourceRecords();
-  const result = await client.bucket(bucket).collection(WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION).createRecord({
+  const result = await client.bucket(bucket).collection(COLLECTION_ID).createRecord({
     relatedRealms: githubRecords
   });
-  const postServerData = await client.bucket(bucket).collection(WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION).getData();
-  await client.bucket(bucket).collection(WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION).setData({status: "to-review", last_modified: postServerData.last_modified}, {patch: true});
-  console.log(`Added new record to ${WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION}`, result);
+  const postServerData = await client.bucket(bucket).collection(COLLECTION_ID).getData();
+  await client.bucket(bucket).collection(COLLECTION_ID).setData({status: "to-review", last_modified: postServerData.last_modified}, {patch: true});
+  console.log(`Added new record to ${COLLECTION_ID}`, result);
 };
 
 const printSuccessMessage = () => {
@@ -94,7 +94,7 @@ const main = async () => {
       }
     });
 
-    let records = await client.bucket(bucket).collection(WEBSITES_WITH_SHARED_CREDENTIAL_COLLECTION).listRecords();
+    let records = await client.bucket(bucket).collection(COLLECTION_ID).listRecords();
     let data = records.data;
 
     // If there are existing records in the collection, we need to update instead of creating new records
