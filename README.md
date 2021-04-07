@@ -14,6 +14,6 @@ To run this script:
 
 `$ node update-script.js`
 
-**Note**: Corporate VPN access is required to access the Staging or Production Kinto servers.
+**Note**: Corporate VPN access is required to access the Remote Settings servers
 
 The script will exit with a `0` for success and a `1` if there were any errors.
