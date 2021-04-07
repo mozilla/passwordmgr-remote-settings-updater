@@ -14,9 +14,11 @@ const BUCKET = "main-workspace";
 const APPLE_API_ENDPOINT = "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/websites-with-shared-credential-backends.json";
 
 /**
- * Fetches the source records from the APPLE_API_ENDPOINT
+ * Fetches the source records from the APPLE_API_ENDPOINT.
  *
- * @return {String[][]} 
+ * Since this script should run once every two weeks, we don't need a GitHub token.
+ * See also: https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting
+ * @return {String[][]} The related realms
  */
 const getSourceRecords = async () => {
   const response = await fetch(APPLE_API_ENDPOINT, {
@@ -52,7 +54,7 @@ const updateRecord = async (client, bucket, newRecord) => {
     status: "to-review",
     last_modified: postServerData.last_modified
   };
-  await client.bucket(bucket).collection(COLLECTION_ID).setData(setDataObject, {patch: true});
+  await client.bucket(bucket).collection(COLLECTION_ID).setData(setDataObject, { patch: true });
   console.log(`Found new records, committed changes to ${COLLECTION_ID} collection.`);
 };
 
@@ -67,7 +69,7 @@ const createRecord = async (client, bucket, sourceRecords) => {
     relatedRealms: sourceRecords
   });
   const postServerData = await client.bucket(bucket).collection(COLLECTION_ID).getData();
-  await client.bucket(bucket).collection(COLLECTION_ID).setData({status: "to-review", last_modified: postServerData.last_modified}, {patch: true});
+  await client.bucket(bucket).collection(COLLECTION_ID).setData({ status: "to-review", last_modified: postServerData.last_modified }, { patch: true });
   console.log(`Added new record to ${COLLECTION_ID}`, result);
 };
 
@@ -117,21 +119,24 @@ const main = async () => {
     let records = await client.bucket(BUCKET).collection(COLLECTION_ID).listRecords();
     let data = records.data;
     let githubRecords = await getSourceRecords();
-    let id = data[0].id;
-    let areNewRecords = checkIfNewRecords(githubRecords, data[0].relatedRealms);
+    let id = data[0]?.id;
     // If there is no ID from Remote Settings, we need to create a new record
     if (!id) {
-      createRecord(client, BUCKET, githubRecords);
-    }
-    // If there are new records, we need to update the data of the record using the current ID
-    else if (areNewRecords) {
-      let newRecord = {
-        id: id,
-        relatedRealms: githubRecords
-      };
-      updateRecord(client, BUCKET, newRecord)
+      await createRecord(client, BUCKET, githubRecords);
     } else {
-      console.log("No new records! Not committing any changes to Remote Settings collection.");
+      // If there is an ID, we can compare the source and destination records
+      let currentRecords = data[0].relatedRealms;
+      let areNewRecords = checkIfNewRecords(githubRecords, currentRecords);
+      // If there are new records, we need to update the data of the record using the current ID
+      if (areNewRecords) {
+        let newRecord = {
+          id: id,
+          relatedRealms: githubRecords
+        };
+        await updateRecord(client, BUCKET, newRecord)
+      } else {
+        console.log("No new records! Not committing any changes to Remote Settings collection.");
+      }
     }
   } catch (e) {
     console.error(e);
