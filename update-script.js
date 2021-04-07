@@ -52,7 +52,7 @@ const updateRecord = async (client, bucket, newRecord) => {
     last_modified: postServerData.last_modified
   };
   await client.bucket(bucket).collection(COLLECTION_ID).setData(setDataObject, {patch: true});
-  console.log(`Found new records, committing changes to ${COLLECTION_ID} collection.`);
+  console.log(`Found new records, committed changes to ${COLLECTION_ID} collection.`);
 };
 
 /**
