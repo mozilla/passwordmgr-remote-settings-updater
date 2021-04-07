@@ -10,7 +10,7 @@ const FX_RS_WRITER_USER = AppConstants.FX_REMOTE_SETTINGS_WRITER_USER;
 const FX_RS_WRITER_PASS = AppConstants.FX_REMOTE_SETTINGS_WRITER_PASS;
 /** @type {String} */
 const SERVER_ADDRESS = AppConstants.FX_REMOTE_SETTINGS_WRITER_SERVER;
-
+const BUCKET = "main-workspace";
 const APPLE_API_ENDPOINT = "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/websites-with-shared-credential-backends.json";
 
 /**
@@ -85,7 +85,6 @@ const main = async () => {
     console.error("No username or password set, quitting!");
     return 1;
   }
-  const bucket = "main-workspace";
   const secretString = `${FX_RS_WRITER_USER}:${FX_RS_WRITER_PASS}`;
   try {
     const client = new KintoClient(SERVER_ADDRESS, {
@@ -94,7 +93,7 @@ const main = async () => {
       }
     });
 
-    let records = await client.bucket(bucket).collection(COLLECTION_ID).listRecords();
+    let records = await client.bucket(BUCKET).collection(COLLECTION_ID).listRecords();
     let data = records.data;
 
     // If there are existing records in the collection, we need to update instead of creating new records
@@ -111,7 +110,7 @@ const main = async () => {
         areNewRecords = true;
       }
       if (areNewRecords) {
-        updateRecord(client, bucket, newRecord);
+        updateRecord(client, BUCKET, newRecord);
         printSuccessMessage();
         return 0;
       } else {
@@ -120,7 +119,7 @@ const main = async () => {
           let b = currentRelatedRealms[i];
           areNewRecords = !arrayEquals(a,b);
           if (areNewRecords) {
-            updateRecord(client, bucket, newRecord);
+            updateRecord(client, BUCKET, newRecord);
             printSuccessMessage();
             return 0;
           }
@@ -128,7 +127,7 @@ const main = async () => {
       }
       console.log("No new records! Not committing any changes to Remote Settings collection.");
     } else {
-      createRecord(client, bucket);
+      createRecord(client, BUCKET);
     }
   } catch (e) {
     console.error(e);
