@@ -45,6 +45,7 @@ const arrayEquals = (a, b) => {
  * @param {string[][]} newRecord.relatedRealms Updated related realms array from GitHub
  */
 const updateRecord = async (client, bucket, newRecord) => {
+  // ? Why do we ignore the result of the `updateRecord` call?
   await client.bucket(bucket).collection(COLLECTION_ID).updateRecord(newRecord);
   const postServerData = await client.bucket(bucket).collection(COLLECTION_ID).getData();
   const setDataObject = {
@@ -61,10 +62,9 @@ const updateRecord = async (client, bucket, newRecord) => {
  * @param {KintoClient} client
  * @param {string} bucket
  */
-const createRecord = async (client, bucket) => {
-  let githubRecords = await getSourceRecords();
+const createRecord = async (client, bucket, sourceRecords) => {
   const result = await client.bucket(bucket).collection(COLLECTION_ID).createRecord({
-    relatedRealms: githubRecords
+    relatedRealms: sourceRecords
   });
   const postServerData = await client.bucket(bucket).collection(COLLECTION_ID).getData();
   await client.bucket(bucket).collection(COLLECTION_ID).setData({status: "to-review", last_modified: postServerData.last_modified}, {patch: true});
@@ -73,6 +73,27 @@ const createRecord = async (client, bucket) => {
 
 const printSuccessMessage = () => {
   console.log("Script finished successfully!");
+}
+
+/**
+ * Determines if there are new records from the GitHub source
+ *
+ * @param {String[][]} sourceRecords Related realms from Apple's GitHub
+ * @param {String[][]} destinationRecords Related realms from Remote Settings
+ * @return {Boolean} `true` if there are new records, `false` if there are no new records 
+ */
+const checkIfNewRecords = (sourceRecords, destinationRecords) => {
+  let areNewRecords = false;
+  if (sourceRecords.length !== destinationRecords.length) {
+    areNewRecords = true;
+  }
+  for (let i = 0; i < sourceRecords.length; i++) {
+    if (areNewRecords) {
+      break;
+    }
+    areNewRecords = !arrayEquals(sourceRecords[i], destinationRecords[i]);
+  }
+  return areNewRecords;
 }
 
 /**
@@ -95,39 +116,22 @@ const main = async () => {
 
     let records = await client.bucket(BUCKET).collection(COLLECTION_ID).listRecords();
     let data = records.data;
-
-    // If there are existing records in the collection, we need to update instead of creating new records
-    if (data.length) {
-      let currentRelatedRealms = data[0].relatedRealms;
-      let id = data[0].id;
-      let areNewRecords = false;
-      let githubRecords = await getSourceRecords();
+    let githubRecords = await getSourceRecords();
+    let id = data[0].id;
+    let areNewRecords = checkIfNewRecords(githubRecords, data[0].relatedRealms);
+    // If there is no ID from Remote Settings, we need to create a new record
+    if (!id) {
+      createRecord(client, BUCKET, githubRecords);
+    }
+    // If there are new records, we need to update the data of the record using the current ID
+    else if (areNewRecords) {
       let newRecord = {
         id: id,
         relatedRealms: githubRecords
       };
-      if (githubRecords.length != currentRelatedRealms.length) {
-        areNewRecords = true;
-      }
-      if (areNewRecords) {
-        updateRecord(client, BUCKET, newRecord);
-        printSuccessMessage();
-        return 0;
-      } else {
-        for (let i = 0; i < githubRecords.length; i++) {
-          let a = githubRecords[i];
-          let b = currentRelatedRealms[i];
-          areNewRecords = !arrayEquals(a,b);
-          if (areNewRecords) {
-            updateRecord(client, BUCKET, newRecord);
-            printSuccessMessage();
-            return 0;
-          }
-        }
-      }
-      console.log("No new records! Not committing any changes to Remote Settings collection.");
+      updateRecord(client, BUCKET, newRecord)
     } else {
-      createRecord(client, BUCKET);
+      console.log("No new records! Not committing any changes to Remote Settings collection.");
     }
   } catch (e) {
     console.error(e);
