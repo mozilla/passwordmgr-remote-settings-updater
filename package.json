@@ -1,0 +1,31 @@
+{
+  "name": "update-websites-with-shared-credential-backends",
+  "version": "0.0.1",
+  "description": "Updates the 'websites-with-shared-credential-backends' collection on Remote Settings",
+  "author": "Tim Giles",
+  "main": "index.js",
+  "engines": {
+    "node": "14"
+  },
+  "private": "true",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TGiles/bug-1120684.git"
+  },
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/TGiles/bug-1120684/issues"
+  },
+  "homepage": "https://github.com/TGiles/bug-1120684#readme",
+  "dependencies": {
+    "atob": "^2.1.2",
+    "btoa": "^1.2.1",
+    "dotenv": "^8.2.0",
+    "form-data": "^3.0.0",
+    "kinto-http": "^5.1.1",
+    "node-fetch": "^2.6.1"
+  }
+}
