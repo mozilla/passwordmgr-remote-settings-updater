@@ -64,7 +64,6 @@ jobs:
       - run:
           name: Restore Docker image cache
           command: docker load -i /cache/docker.tar
-      # TODO: The following is probably not needed since the app itself has no tests specified
       - run:
           name: Test Code
           command: docker run app:build test
