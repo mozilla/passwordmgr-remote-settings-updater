@@ -1,4 +1,4 @@
-FROM node:12-slim
+FROM node:14-slim
 
 # add a non-privileged user for running the application
 RUN groupadd --gid 10001 app && \
@@ -13,7 +13,8 @@ RUN npm install && \
     rm -rf ~app/.node-gyp
 
 # Finally copy in the app's source file
-COPY . /app
+COPY ./update-script.js /app
+COPY ./app-constants.js /app
 
 ENV PORT=8000
 USER app
