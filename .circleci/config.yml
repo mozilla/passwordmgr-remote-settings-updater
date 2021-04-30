@@ -51,23 +51,6 @@ jobs:
           paths:
             - /cache/docker.tar
 
-  test:
-    docker:
-      - image: docker:18.02.0-ce
-        auth:
-          username: $DOCKER_USER
-          password: $DOCKER_PASS
-    steps:
-      - setup_remote_docker
-      - restore_cache:
-          key: v1-{{.Environment.CIRCLE_SHA1}}
-      - run:
-          name: Restore Docker image cache
-          command: docker load -i /cache/docker.tar
-      - run:
-          name: Test Code
-          command: docker run app:build test
-
   deploy:
     docker:
       - image: docker:18.02.0-ce
@@ -100,16 +83,9 @@ jobs:
 
 workflows:
   version: 2
-  build-test-deploy:
+  build-deploy:
     jobs:
       - build:
-          filters:
-            tags:
-              only: /.*/
-
-      - test:
-          requires:
-            - build
           filters:
             tags:
               only: /.*/
@@ -117,7 +93,6 @@ workflows:
       - deploy:
           requires:
             - build
-            - test
           filters:
             tags:
               only: /.*/
