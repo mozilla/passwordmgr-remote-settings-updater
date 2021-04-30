@@ -47,7 +47,6 @@ const arrayEquals = (a, b) => {
  * @param {string[][]} newRecord.relatedRealms Updated related realms array from GitHub
  */
 const updateRecord = async (client, bucket, newRecord) => {
-  // ? Why do we ignore the result of the `updateRecord` call?
   await client.bucket(bucket).collection(COLLECTION_ID).updateRecord(newRecord);
   const postServerData = await client.bucket(bucket).collection(COLLECTION_ID).getData();
   const setDataObject = {
