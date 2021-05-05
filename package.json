@@ -14,13 +14,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TGiles/bug-1120684.git"
+    "url": "git+https://github.com/mozilla/passwordmgr-related-realms-updater.git"
   },
   "license": "MPL-2.0",
   "bugs": {
-    "url": "https://github.com/TGiles/bug-1120684/issues"
+    "url": "https://github.com/mozilla/passwordmgr-related-realms-updater/issues"
   },
-  "homepage": "https://github.com/TGiles/bug-1120684#readme",
+  "homepage": "https://github.com/mozilla/passwordmgr-related-realms-updater#readme",
   "dependencies": {
     "atob": "^2.1.2",
     "btoa": "^1.2.1",
