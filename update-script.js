@@ -3,7 +3,8 @@ const btoa = require("btoa");
 const fetch = require("node-fetch");
 const AppConstants = require("./app-constants");
 
-const COLLECTION_ID = "websites-with-shared-credential-backends";
+const RELATED_REALMS_COLLECTION_ID = "websites-with-shared-credential-backends";
+const PASSWORD_RULES_COLLECTION_ID = "password-rules";
 /** @type {String} */
 const FX_RS_WRITER_USER = AppConstants.FX_REMOTE_SETTINGS_WRITER_USER;
 /** @type {String} */
@@ -11,17 +12,19 @@ const FX_RS_WRITER_PASS = AppConstants.FX_REMOTE_SETTINGS_WRITER_PASS;
 /** @type {String} */
 const SERVER_ADDRESS = AppConstants.FX_REMOTE_SETTINGS_WRITER_SERVER;
 const BUCKET = "main-workspace";
-const APPLE_API_ENDPOINT = "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/websites-with-shared-credential-backends.json";
+const RELATED_REALMS_API_ENDPOINT = "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/websites-with-shared-credential-backends.json";
+const PASSWORD_RULES_API_ENDPOINT = "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/password-rules.json";
 
 /**
- * Fetches the source records from the APPLE_API_ENDPOINT.
+ * Fetches the source records from the API_ENDPOINT param
  *
  * Since this script should run once every two weeks, we don't need a GitHub token.
  * See also: https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting
+ * @param {string} API_ENDPOINT either the `RELATED_REALMS_API_ENDPOINT` or `PASSWORD_RULES_API_ENDPOINT`
  * @return {String[][]} The related realms
  */
-const getSourceRecords = async () => {
-  const response = await fetch(APPLE_API_ENDPOINT, {
+const getSourceRecords = async (API_ENDPOINT) => {
+  const response = await fetch(API_ENDPOINT, {
     headers: {
       "Accept": "application/vnd.github.v3.raw"
     }
@@ -46,15 +49,15 @@ const arrayEquals = (a, b) => {
  * @param {string} newRecord.id ID from the current related realms object from the Remote Settings server
  * @param {string[][]} newRecord.relatedRealms Updated related realms array from GitHub
  */
-const updateRecord = async (client, bucket, newRecord) => {
-  await client.bucket(bucket).collection(COLLECTION_ID).updateRecord(newRecord);
-  const postServerData = await client.bucket(bucket).collection(COLLECTION_ID).getData();
+const updateRelatedRealmsRecord = async (client, bucket, newRecord) => {
+  await client.bucket(bucket).collection(RELATED_REALMS_COLLECTION_ID).updateRecord(newRecord);
+  const postServerData = await client.bucket(bucket).collection(RELATED_REALMS_COLLECTION_ID).getData();
   const setDataObject = {
     status: "to-review",
     last_modified: postServerData.last_modified
   };
-  await client.bucket(bucket).collection(COLLECTION_ID).setData(setDataObject, { patch: true });
-  console.log(`Found new records, committed changes to ${COLLECTION_ID} collection.`);
+  await client.bucket(bucket).collection(RELATED_REALMS_COLLECTION_ID).setData(setDataObject, { patch: true });
+  console.log(`Found new records, committed changes to ${RELATED_REALMS_COLLECTION_ID} collection.`);
 };
 
 /**
@@ -63,13 +66,13 @@ const updateRecord = async (client, bucket, newRecord) => {
  * @param {KintoClient} client
  * @param {string} bucket
  */
-const createRecord = async (client, bucket, sourceRecords) => {
-  const result = await client.bucket(bucket).collection(COLLECTION_ID).createRecord({
+const createRelatedRealmsRecord = async (client, bucket, sourceRecords) => {
+  const result = await client.bucket(bucket).collection(RELATED_REALMS_COLLECTION_ID).createRecord({
     relatedRealms: sourceRecords
   });
-  const postServerData = await client.bucket(bucket).collection(COLLECTION_ID).getData();
-  await client.bucket(bucket).collection(COLLECTION_ID).setData({ status: "to-review", last_modified: postServerData.last_modified }, { patch: true });
-  console.log(`Added new record to ${COLLECTION_ID}`, result);
+  const postServerData = await client.bucket(bucket).collection(RELATED_REALMS_COLLECTION_ID).getData();
+  await client.bucket(bucket).collection(RELATED_REALMS_COLLECTION_ID).setData({ status: "to-review", last_modified: postServerData.last_modified }, { patch: true });
+  console.log(`Added new record to ${RELATED_REALMS_COLLECTION_ID}`, result);
 };
 
 const printSuccessMessage = () => {
@@ -83,7 +86,7 @@ const printSuccessMessage = () => {
  * @param {String[][]} destinationRecords Related realms from Remote Settings
  * @return {Boolean} `true` if there are new records, `false` if there are no new records 
  */
-const checkIfNewRecords = (sourceRecords, destinationRecords) => {
+const checkIfNewRelatedRealmsRecords = (sourceRecords, destinationRecords) => {
   let areNewRecords = false;
   if (sourceRecords.length !== destinationRecords.length) {
     areNewRecords = true;
@@ -98,11 +101,81 @@ const checkIfNewRecords = (sourceRecords, destinationRecords) => {
 }
 
 /**
+ * Converts the records from the "password-rules" Remote Settings collection into a Map 
+ * for easier comparison against the GitHub source of truth records.
+ *
+ * @param {Object[]} records
+ * @param {string} records.Domain
+ * @param {string} records[password-rules]
+ * @return {Map} 
+ */
+const remoteSettingsRecordsToMap = (records) => {
+  let map = new Map();
+  for (let record of records) {
+    let { id, Domain: domain, "password-rules": rules } = record;
+    map.set(domain, { id: id, "password-rules": rules });
+  }
+  return map;
+}
+
+/**
+ * Creates and/or updates the existing records in Remote Settings with the updated data from Apple's GitHub repository
+ *
+ * @param {KintoClient} client KintoClient instance
+ * @param {string} bucket Name of the Remote Settings bucket
+ */
+const createAndUpdateRulesRecords = async (client, bucket) => {
+  let githubRecords = await getSourceRecords(PASSWORD_RULES_API_ENDPOINT);
+  let { data: remoteSettingsRecords } = await client.bucket(bucket).collection(PASSWORD_RULES_COLLECTION_ID).listRecords();
+  let remoteSettingsMap = remoteSettingsRecordsToMap(remoteSettingsRecords);
+  let batchRecords = [];
+
+  for (let key in githubRecords) {
+    let comparisonRules = githubRecords[key]["password-rules"];
+    let oldRecord = remoteSettingsMap.get(key);
+    let oldRules = oldRecord?.["password-rules"];
+    if (!oldRecord) {
+      let newRecord = { "Domain": key, "password-rules": githubRecords[key]["password-rules"] };
+      batchRecords.push(newRecord);
+      console.log("Added new record to batch!", newRecord);
+    }
+    if (oldRecord && oldRules !== comparisonRules) {
+      let updatedRecord = { "id": oldRecord.id, "Domain": key, "password-rules": comparisonRules };
+      batchRecords.push(updatedRecord);
+      console.log("Added updated record to batch!", updatedRecord);
+    }
+
+  }
+  await client.bucket(bucket).collection(PASSWORD_RULES_COLLECTION_ID).batch(batch => {
+    for (let record of batchRecords) {
+      if (record.id) {
+        batch.updateRecord(record);
+      } else {
+        batch.createRecord(record);
+      }
+    }
+  });
+
+  const postServerData = await client.bucket(bucket).collection(PASSWORD_RULES_COLLECTION_ID).getData();
+  const setDataObject = {
+    status: "to-review",
+    last_modified: postServerData.last_modified
+  };
+  await client.bucket(bucket).collection(PASSWORD_RULES_COLLECTION_ID).setData(setDataObject, { patch: true });
+  if (batchRecords.length) {
+    console.log(`Found new and/or updated records, committed changes to ${PASSWORD_RULES_COLLECTION_ID} collection.`);
+  } else {
+    console.log(`Found no new or updated records for the ${PASSWORD_RULES_COLLECTION_ID} collection.`);
+  }
+};
+
+/**
  * The runner for the script.
  * 
  * @return {Number} 0 for success, 1 for failure.
  */
 const main = async () => {
+  debugger;
   if (FX_RS_WRITER_USER === "" || FX_RS_WRITER_PASS === "") {
     console.error("No username or password set, quitting!");
     return 1;
@@ -115,28 +188,30 @@ const main = async () => {
       }
     });
 
-    let records = await client.bucket(BUCKET).collection(COLLECTION_ID).listRecords();
-    let data = records.data;
-    let githubRecords = await getSourceRecords();
-    let id = data[0]?.id;
-    // If there is no ID from Remote Settings, we need to create a new record
+    let { data: relatedRealmsData } = await client.bucket(BUCKET).collection(RELATED_REALMS_COLLECTION_ID).listRecords();
+    // let relatedRealmsData = relatedRealmsRecords.data;
+    let realmsGithubRecords = await getSourceRecords(RELATED_REALMS_API_ENDPOINT);
+    let id = relatedRealmsData[0]?.id;
+    // If there is no ID from Remote Settings, we need to create a new record in the related realms collection
     if (!id) {
-      await createRecord(client, BUCKET, githubRecords);
+      await createRelatedRealmsRecord(client, BUCKET, realmsGithubRecords);
     } else {
       // If there is an ID, we can compare the source and destination records
-      let currentRecords = data[0].relatedRealms;
-      let areNewRecords = checkIfNewRecords(githubRecords, currentRecords);
+      let currentRecords = relatedRealmsData[0].relatedRealms;
+      let areNewRecords = checkIfNewRelatedRealmsRecords(realmsGithubRecords, currentRecords);
       // If there are new records, we need to update the data of the record using the current ID
       if (areNewRecords) {
         let newRecord = {
           id: id,
-          relatedRealms: githubRecords
+          relatedRealms: realmsGithubRecords
         };
-        await updateRecord(client, BUCKET, newRecord)
+        await updateRelatedRealmsRecord(client, BUCKET, newRecord)
       } else {
-        console.log("No new records! Not committing any changes to Remote Settings collection.");
+        console.log(`No new records! Not committing any changes to ${RELATED_REALMS_COLLECTION_ID} collection.`);
       }
     }
+
+    await createAndUpdateRulesRecords(client, BUCKET);
   } catch (e) {
     console.error(e);
     return 1;
