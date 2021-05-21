@@ -20,8 +20,8 @@ const PASSWORD_RULES_API_ENDPOINT = "https://api.github.com/repos/apple/password
  *
  * Since this script should run once every two weeks, we don't need a GitHub token.
  * See also: https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting
- * @param {string} API_ENDPOINT either the `RELATED_REALMS_API_ENDPOINT` or `PASSWORD_RULES_API_ENDPOINT`
- * @return {String[][]} The related realms
+ * @param {string} API_ENDPOINT either `RELATED_REALMS_API_ENDPOINT` or `PASSWORD_RULES_API_ENDPOINT`
+ * @return {String[][]} The source records
  */
 const getSourceRecords = async (API_ENDPOINT) => {
   const response = await fetch(API_ENDPOINT, {
@@ -41,7 +41,7 @@ const arrayEquals = (a, b) => {
 };
 
 /**
- * Updates the existing record in Remote Settings with the updated data from Apple's GitHub repository
+ * Updates the existing record in the "websites-with-shared-credential-backends" Remote Settings collection with the updated data from Apple's GitHub repository
  *
  * @param {KintoClient} client KintoClient instance
  * @param {string} bucket Name of the Remote Settings bucket
@@ -80,7 +80,7 @@ const printSuccessMessage = () => {
 }
 
 /**
- * Determines if there are new records from the GitHub source
+ * Determines if there are new records from the GitHub source for the "websites-with-shared-credential-backends" collection
  *
  * @param {String[][]} sourceRecords Related realms from Apple's GitHub
  * @param {String[][]} destinationRecords Related realms from Remote Settings
@@ -119,7 +119,7 @@ const remoteSettingsRecordsToMap = (records) => {
 }
 
 /**
- * Creates and/or updates the existing records in Remote Settings with the updated data from Apple's GitHub repository
+ * Creates and/or updates the existing records in the "password-rules" Remote Settings collection with the updated data from Apple's GitHub repository
  *
  * @param {KintoClient} client KintoClient instance
  * @param {string} bucket Name of the Remote Settings bucket
