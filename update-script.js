@@ -175,7 +175,6 @@ const createAndUpdateRulesRecords = async (client, bucket) => {
  * @return {Number} 0 for success, 1 for failure.
  */
 const main = async () => {
-  debugger;
   if (FX_RS_WRITER_USER === "" || FX_RS_WRITER_PASS === "") {
     console.error("No username or password set, quitting!");
     return 1;
@@ -189,7 +188,6 @@ const main = async () => {
     });
 
     let { data: relatedRealmsData } = await client.bucket(BUCKET).collection(RELATED_REALMS_COLLECTION_ID).listRecords();
-    // let relatedRealmsData = relatedRealmsRecords.data;
     let realmsGithubRecords = await getSourceRecords(RELATED_REALMS_API_ENDPOINT);
     let id = relatedRealmsData[0]?.id;
     // If there is no ID from Remote Settings, we need to create a new record in the related realms collection
