@@ -209,7 +209,6 @@ const createAndUpdateRelatedRealmsRecords = async (client, bucket) => {
  * @return {Number} 0 for success, 1 for failure.
  */
 const main = async () => {
-  debugger;
   if (FX_RS_WRITER_USER === "" || FX_RS_WRITER_PASS === "") {
     console.error("No username or password set, quitting!");
     return 1;
