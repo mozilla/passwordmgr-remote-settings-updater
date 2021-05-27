@@ -20,11 +20,11 @@ const PASSWORD_RULES_API_ENDPOINT = "https://api.github.com/repos/apple/password
  *
  * Since this script should run once every two weeks, we don't need a GitHub token.
  * See also: https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting
- * @param {string} API_ENDPOINT either `RELATED_REALMS_API_ENDPOINT` or `PASSWORD_RULES_API_ENDPOINT`
+ * @param {string} apiEndpoint either `RELATED_REALMS_API_ENDPOINT` or `PASSWORD_RULES_API_ENDPOINT`
  * @return {String[][]} The source records
  */
-const getSourceRecords = async (API_ENDPOINT) => {
-  const response = await fetch(API_ENDPOINT, {
+const getSourceRecords = async (apiEndpoint) => {
+  const response = await fetch(apiEndpoint, {
     headers: {
       "Accept": "application/vnd.github.v3.raw"
     }
