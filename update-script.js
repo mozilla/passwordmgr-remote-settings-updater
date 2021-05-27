@@ -173,6 +173,37 @@ const createAndUpdateRulesRecords = async (client, bucket) => {
 };
 
 /**
+ * Creates and/or updates the existing records in the "websites-with-shared-credential-backends" Remote Settings collection 
+ * with the updated data from Apple's GitHub repository.
+ *
+ * @param {KintoClient} client
+ * @param {string} bucket
+ */
+const createAndUpdateRelatedRealmsRecords = async (client, bucket) => {
+  let { data: relatedRealmsData } = await client.bucket(bucket).collection(RELATED_REALMS_COLLECTION_ID).listRecords();
+  let realmsGithubRecords = await getSourceRecords(RELATED_REALMS_API_ENDPOINT);
+  let id = relatedRealmsData[0]?.id;
+  // If there is no ID from Remote Settings, we need to create a new record in the related realms collection
+  if (!id) {
+    await createRelatedRealmsRecord(client, bucket, realmsGithubRecords);
+  } else {
+    // If there is an ID, we can compare the source and destination records
+    let currentRecords = relatedRealmsData[0].relatedRealms;
+    let areNewRecords = checkIfNewRelatedRealmsRecords(realmsGithubRecords, currentRecords);
+    // If there are new records, we need to update the data of the record using the current ID
+    if (areNewRecords) {
+      let newRecord = {
+        id: id,
+        relatedRealms: realmsGithubRecords
+      };
+      await updateRelatedRealmsRecord(client, bucket, newRecord)
+    } else {
+      console.log(`No new records! Not committing any changes to ${RELATED_REALMS_COLLECTION_ID} collection.`);
+    }
+  }
+};
+
+/**
  * The runner for the script.
  * 
  * @return {Number} 0 for success, 1 for failure.
@@ -190,28 +221,7 @@ const main = async () => {
       }
     });
 
-    let { data: relatedRealmsData } = await client.bucket(BUCKET).collection(RELATED_REALMS_COLLECTION_ID).listRecords();
-    let realmsGithubRecords = await getSourceRecords(RELATED_REALMS_API_ENDPOINT);
-    let id = relatedRealmsData[0]?.id;
-    // If there is no ID from Remote Settings, we need to create a new record in the related realms collection
-    if (!id) {
-      await createRelatedRealmsRecord(client, BUCKET, realmsGithubRecords);
-    } else {
-      // If there is an ID, we can compare the source and destination records
-      let currentRecords = relatedRealmsData[0].relatedRealms;
-      let areNewRecords = checkIfNewRelatedRealmsRecords(realmsGithubRecords, currentRecords);
-      // If there are new records, we need to update the data of the record using the current ID
-      if (areNewRecords) {
-        let newRecord = {
-          id: id,
-          relatedRealms: realmsGithubRecords
-        };
-        await updateRelatedRealmsRecord(client, BUCKET, newRecord)
-      } else {
-        console.log(`No new records! Not committing any changes to ${RELATED_REALMS_COLLECTION_ID} collection.`);
-      }
-    }
-
+    await createAndUpdateRelatedRealmsRecords(client, BUCKET);
     await createAndUpdateRulesRecords(client, BUCKET);
   } catch (e) {
     console.error(e);
