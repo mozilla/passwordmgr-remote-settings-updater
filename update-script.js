@@ -50,14 +50,15 @@ const arrayEquals = (a, b) => {
  * @param {string[][]} newRecord.relatedRealms Updated related realms array from GitHub
  */
 const updateRelatedRealmsRecord = async (client, bucket, newRecord) => {
-  await client.bucket(bucket).collection(RELATED_REALMS_COLLECTION_ID).updateRecord(newRecord);
-  const postServerData = await client.bucket(bucket).collection(RELATED_REALMS_COLLECTION_ID).getData();
+  const cid = RELATED_REALMS_COLLECTION_ID;
+  await client.bucket(bucket).collection(cid).updateRecord(newRecord);
+  const postServerData = await client.bucket(bucket).collection(cid).getData();
   const setDataObject = {
     status: "to-review",
     last_modified: postServerData.last_modified
   };
-  await client.bucket(bucket).collection(RELATED_REALMS_COLLECTION_ID).setData(setDataObject, { patch: true });
-  console.log(`Found new records, committed changes to ${RELATED_REALMS_COLLECTION_ID} collection.`);
+  await client.bucket(bucket).collection(cid).setData(setDataObject, { patch: true });
+  console.log(`Found new records, committed changes to ${cid} collection.`);
 };
 
 /**
@@ -67,12 +68,13 @@ const updateRelatedRealmsRecord = async (client, bucket, newRecord) => {
  * @param {string} bucket
  */
 const createRelatedRealmsRecord = async (client, bucket, sourceRecords) => {
-  const result = await client.bucket(bucket).collection(RELATED_REALMS_COLLECTION_ID).createRecord({
+  const cid = RELATED_REALMS_COLLECTION_ID;
+  const result = await client.bucket(bucket).collection(cid).createRecord({
     relatedRealms: sourceRecords
   });
-  const postServerData = await client.bucket(bucket).collection(RELATED_REALMS_COLLECTION_ID).getData();
-  await client.bucket(bucket).collection(RELATED_REALMS_COLLECTION_ID).setData({ status: "to-review", last_modified: postServerData.last_modified }, { patch: true });
-  console.log(`Added new record to ${RELATED_REALMS_COLLECTION_ID}`, result);
+  const postServerData = await client.bucket(bucket).collection(cid).getData();
+  await client.bucket(bucket).collection(cid).setData({ status: "to-review", last_modified: postServerData.last_modified }, { patch: true });
+  console.log(`Added new record to ${cid}`, result);
 };
 
 const printSuccessMessage = () => {
