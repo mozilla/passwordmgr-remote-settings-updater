@@ -111,7 +111,7 @@ const checkIfNewRelatedRealmsRecords = (sourceRecords, destinationRecords) => {
  * @param {string} records[password-rules]
  * @return {Map} 
  */
-const remoteSettingsRecordsToMap = (records) => {
+const passwordRulesRecordsToMap = (records) => {
   let map = new Map();
   for (let record of records) {
     let { id, Domain: domain, "password-rules": rules } = record;
@@ -127,28 +127,29 @@ const remoteSettingsRecordsToMap = (records) => {
  * @param {string} bucket Name of the Remote Settings bucket
  */
 const createAndUpdateRulesRecords = async (client, bucket) => {
-  let githubRecords = await getSourceRecords(PASSWORD_RULES_API_ENDPOINT);
-  let { data: remoteSettingsRecords } = await client.bucket(bucket).collection(PASSWORD_RULES_COLLECTION_ID).listRecords();
-  let remoteSettingsMap = remoteSettingsRecordsToMap(remoteSettingsRecords);
+  let collection = client.bucket(bucket).collection(PASSWORD_RULES_COLLECTION_ID);
+  let sourceRulesByDomain = await getSourceRecords(PASSWORD_RULES_API_ENDPOINT);
+  let { data: remoteSettingsRecords } = await collection.listRecords();
+  let remoteSettingsRulesByDomain = passwordRulesRecordsToMap(remoteSettingsRecords);
   let batchRecords = [];
 
-  for (let key in githubRecords) {
-    let comparisonRules = githubRecords[key]["password-rules"];
-    let oldRecord = remoteSettingsMap.get(key);
+  for (let domain in sourceRulesByDomain) {
+    let passwordRules = sourceRulesByDomain[domain]["password-rules"];
+    let oldRecord = remoteSettingsRulesByDomain.get(domain);
     let oldRules = oldRecord?.["password-rules"];
     if (!oldRecord) {
-      let newRecord = { "Domain": key, "password-rules": githubRecords[key]["password-rules"] };
+      let newRecord = { "Domain": domain, "password-rules": passwordRules };
       batchRecords.push(newRecord);
       console.log("Added new record to batch!", newRecord);
     }
     if (oldRecord && oldRules !== comparisonRules) {
-      let updatedRecord = { "id": oldRecord.id, "Domain": key, "password-rules": comparisonRules };
+      let updatedRecord = { ...oldRecord, "password-rules": passwordRules };
       batchRecords.push(updatedRecord);
       console.log("Added updated record to batch!", updatedRecord);
     }
 
   }
-  await client.bucket(bucket).collection(PASSWORD_RULES_COLLECTION_ID).batch(batch => {
+  await collection.batch(batch => {
     for (let record of batchRecords) {
       if (record.id) {
         batch.updateRecord(record);
@@ -158,12 +159,12 @@ const createAndUpdateRulesRecords = async (client, bucket) => {
     }
   });
 
-  const postServerData = await client.bucket(bucket).collection(PASSWORD_RULES_COLLECTION_ID).getData();
+  const postServerData = await collection.getData();
   const setDataObject = {
     status: "to-review",
     last_modified: postServerData.last_modified
   };
-  await client.bucket(bucket).collection(PASSWORD_RULES_COLLECTION_ID).setData(setDataObject, { patch: true });
+  await collection.setData(setDataObject, { patch: true });
   if (batchRecords.length) {
     console.log(`Found new and/or updated records, committed changes to ${PASSWORD_RULES_COLLECTION_ID} collection.`);
   } else {
