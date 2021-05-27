@@ -142,7 +142,7 @@ const createAndUpdateRulesRecords = async (client, bucket) => {
       batchRecords.push(newRecord);
       console.log("Added new record to batch!", newRecord);
     }
-    if (oldRecord && oldRules !== comparisonRules) {
+    if (oldRecord && oldRules !== passwordRules) {
       let updatedRecord = { ...oldRecord, "password-rules": passwordRules };
       batchRecords.push(updatedRecord);
       console.log("Added updated record to batch!", updatedRecord);
