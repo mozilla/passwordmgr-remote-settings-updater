@@ -17,7 +17,7 @@ const RELATED_REALMS_API_ENDPOINT = "https://api.github.com/repos/apple/password
 const PASSWORD_RULES_API_ENDPOINT = "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/password-rules.json";
 
 /**
- * Fetches the source records from the API_ENDPOINT param
+ * Fetches the source records from the apiEndpoint param
  *
  * Since this script should run once every two weeks, we don't need a GitHub token.
  * See also: https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting
