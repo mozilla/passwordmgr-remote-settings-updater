@@ -11,7 +11,8 @@ const FX_RS_WRITER_USER = AppConstants.FX_REMOTE_SETTINGS_WRITER_USER;
 const FX_RS_WRITER_PASS = AppConstants.FX_REMOTE_SETTINGS_WRITER_PASS;
 /** @type {String} */
 const SERVER_ADDRESS = AppConstants.FX_REMOTE_SETTINGS_WRITER_SERVER;
-const BUCKET = "main-workspace";
+// const BUCKET = "main-workspace";
+const BUCKET = "main";
 const RELATED_REALMS_API_ENDPOINT = "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/websites-with-shared-credential-backends.json";
 const PASSWORD_RULES_API_ENDPOINT = "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/password-rules.json";
 
@@ -135,15 +136,14 @@ const createAndUpdateRulesRecords = async (client, bucket) => {
 
   for (let domain in sourceRulesByDomain) {
     let passwordRules = sourceRulesByDomain[domain]["password-rules"];
-    let oldRecord = remoteSettingsRulesByDomain.get(domain);
-    let oldRules = oldRecord?.["password-rules"];
-    if (!oldRecord) {
+    let { id, "password-rules": oldRules } = remoteSettingsRulesByDomain.get(domain);
+    if (!id) {
       let newRecord = { "Domain": domain, "password-rules": passwordRules };
       batchRecords.push(newRecord);
       console.log("Added new record to batch!", newRecord);
     }
-    if (oldRecord && oldRules !== passwordRules) {
-      let updatedRecord = { ...oldRecord, "password-rules": passwordRules };
+    if (id && oldRules !== passwordRules) {
+      let updatedRecord = { id, "Domain": domain, "password-rules": passwordRules };
       batchRecords.push(updatedRecord);
       console.log("Added updated record to batch!", updatedRecord);
     }
@@ -209,6 +209,7 @@ const createAndUpdateRelatedRealmsRecords = async (client, bucket) => {
  * @return {Number} 0 for success, 1 for failure.
  */
 const main = async () => {
+  debugger;
   if (FX_RS_WRITER_USER === "" || FX_RS_WRITER_PASS === "") {
     console.error("No username or password set, quitting!");
     return 1;
