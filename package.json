@@ -1,7 +1,7 @@
 {
-  "name": "update-websites-with-shared-credential-backends",
-  "version": "0.0.1",
-  "description": "Updates the 'websites-with-shared-credential-backends' collection on Remote Settings",
+  "name": "update-passwordmgr-remote-settings-collections",
+  "version": "0.0.2",
+  "description": "Updates the 'websites-with-shared-credential-backends' and 'password-rules' collections on Remote Settings",
   "author": "Tim Giles",
   "main": "index.js",
   "engines": {
@@ -14,13 +14,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mozilla/passwordmgr-related-realms-updater.git"
+    "url": "git+https://github.com/mozilla/passwordmgr-remote-settings-updater.git"
   },
   "license": "MPL-2.0",
   "bugs": {
-    "url": "https://github.com/mozilla/passwordmgr-related-realms-updater/issues"
+    "url": "https://github.com/mozilla/passwordmgr-remote-settings-updater/issues"
   },
-  "homepage": "https://github.com/mozilla/passwordmgr-related-realms-updater#readme",
+  "homepage": "https://github.com/mozilla/passwordmgr-remote-settings-updater#readme",
   "dependencies": {
     "atob": "^2.1.2",
     "btoa": "^1.2.1",
