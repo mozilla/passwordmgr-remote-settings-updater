@@ -130,12 +130,19 @@ const createAndUpdateRulesRecords = async (client, bucket) => {
   let collection = client.bucket(bucket).collection(PASSWORD_RULES_COLLECTION_ID);
   let sourceRulesByDomain = await getSourceRecords(PASSWORD_RULES_API_ENDPOINT);
   let { data: remoteSettingsRecords } = await collection.listRecords();
+  debugger;
   let remoteSettingsRulesByDomain = passwordRulesRecordsToMap(remoteSettingsRecords);
   let batchRecords = [];
 
   for (let domain in sourceRulesByDomain) {
     let passwordRules = sourceRulesByDomain[domain]["password-rules"];
-    let { id, "password-rules": oldRules } = remoteSettingsRulesByDomain.get(domain);
+    let id;
+    let oldRules;
+    let _record = remoteSettingsRulesByDomain.get(domain);
+    if (_record) {
+      id = _record.id;
+      oldRules = _record["password-rules"];
+    }
     if (!id) {
       let newRecord = { "Domain": domain, "password-rules": passwordRules };
       batchRecords.push(newRecord);
