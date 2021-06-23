@@ -19,5 +19,3 @@ COPY ./version.json /app/version.json
 
 ENV PORT=8000
 USER app
-ENTRYPOINT ["npm"]
-CMD ["start"]
