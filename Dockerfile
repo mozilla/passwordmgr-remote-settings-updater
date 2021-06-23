@@ -15,6 +15,7 @@ RUN npm install && \
 # Finally copy in the app's source file
 COPY ./update-script.js /app
 COPY ./app-constants.js /app
+COPY ./version.json /app/version.json
 
 ENV PORT=8000
 USER app
