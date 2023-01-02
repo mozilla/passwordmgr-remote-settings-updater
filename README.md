@@ -17,3 +17,4 @@ To run this script:
 **Note**: Corporate VPN access is required to access the Remote Settings servers
 
 The script will exit with a `0` for success and a `1` if there were any errors.
+test
