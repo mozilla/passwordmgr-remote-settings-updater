@@ -5,8 +5,7 @@ Script that adds new related websites to the "websites-with-shared-credential-ba
 ## Usage
 
 The script will _not run_ without the following environment variables set in `.env`: 
-- `FX_REMOTE_SETTINGS_WRITER_USER`
-- `FX_REMOTE_SETTINGS_WRITER_PASS`
+- `AUHORIZATION`
 - `SERVER`
 - `NODE_ENV`
 

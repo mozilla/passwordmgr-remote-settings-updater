@@ -5,8 +5,7 @@ require("dotenv").config();
 const environmentVariables = [
   "NODE_ENV",
   "SERVER",
-  "FX_REMOTE_SETTINGS_WRITER_USER",
-  "FX_REMOTE_SETTINGS_WRITER_PASS"
+  "AUTHORIZATION",
 ]
 
 const AppConstants = {};
