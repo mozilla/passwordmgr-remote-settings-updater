@@ -6,12 +6,10 @@ const AppConstants = require("./app-constants");
 const RELATED_REALMS_COLLECTION_ID = "websites-with-shared-credential-backends";
 const PASSWORD_RULES_COLLECTION_ID = "password-rules";
 /** @type {String} */
-const FX_RS_WRITER_USER = AppConstants.FX_REMOTE_SETTINGS_WRITER_USER;
 /** @type {String} */
-const FX_RS_WRITER_PASS = AppConstants.FX_REMOTE_SETTINGS_WRITER_PASS;
+const AUTHORIZATION = AppConstants.AUTHORIZATION;
 /** @type {String} */
-const SERVER_ADDRESS = AppConstants.FX_REMOTE_SETTINGS_WRITER_SERVER;
-
+const SERVER_ADDRESS = AppConstants.SERVER;
 const BUCKET = "main-workspace";
 const RELATED_REALMS_API_ENDPOINT = "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/websites-with-shared-credential-backends.json";
 const PASSWORD_RULES_API_ENDPOINT = "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/password-rules.json";
@@ -205,15 +203,14 @@ const createAndUpdateRelatedRealmsRecords = async (client, bucket) => {
  * @return {Number} 0 for success, 1 for failure.
  */
 const main = async () => {
-  if (FX_RS_WRITER_USER === "" || FX_RS_WRITER_PASS === "") {
+  if (AUTHORIZATION === "") {
     console.error("No username or password set, quitting!");
     return 1;
   }
-  const secretString = `${FX_RS_WRITER_USER}:${FX_RS_WRITER_PASS}`;
   try {
     const client = new KintoClient(SERVER_ADDRESS, {
       headers: {
-        Authorization: "Basic " + btoa(secretString)
+        Authorization: "Basic " + btoa(AUTHORIZATION)
       }
     });
 
