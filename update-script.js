@@ -220,11 +220,10 @@ const main = async () => {
     console.error("No username or password set, quitting!");
     return 1;
   }
-  const secretString = `${AUTHORIZATION}`;
   try {
     const client = new KintoClient(SERVER_ADDRESS, {
       headers: {
-        Authorization: "Basic " + btoa(secretString)
+        Authorization: "Basic " + btoa(AUTHORIZATION)
       }
     });
 

@@ -3,7 +3,6 @@
 require("dotenv").config();
 
 const environmentVariables = [
-  "NODE_ENV",
   "SERVER",
   "AUTHORIZATION",
 ]

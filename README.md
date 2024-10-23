@@ -5,9 +5,8 @@ Script that adds new related websites to the "websites-with-shared-credential-ba
 ## Usage
 
 The script will _not run_ without the following environment variables set in `.env`: 
-- `AUHORIZATION`
+- `AUTHORIZATION`
 - `SERVER`
-- `NODE_ENV`
 
 To run this script:
 
