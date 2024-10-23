@@ -54,12 +54,7 @@ const arrayEquals = (a, b) => {
 const updateRelatedRealmsRecord = async (client, bucket, newRecord) => {
   const cid = RELATED_REALMS_COLLECTION_ID;
   await client.bucket(bucket).collection(cid).updateRecord(newRecord);
-  const postServerData = await client.bucket(bucket).collection(cid).getData();
-  const setDataObject = {
-    status: "to-review",
-    last_modified: postServerData.last_modified
-  };
-  await client.bucket(bucket).collection(cid).setData(setDataObject, { patch: true });
+  await client.bucket(bucket).collection(cid).setData({ status: "to-review" }, { patch: true });
   console.log(`Found new records, committed changes to ${cid} collection.`);
 };
 
@@ -74,8 +69,7 @@ const createRelatedRealmsRecord = async (client, bucket, sourceRecords) => {
   const result = await client.bucket(bucket).collection(cid).createRecord({
     relatedRealms: sourceRecords
   });
-  const postServerData = await client.bucket(bucket).collection(cid).getData();
-  await client.bucket(bucket).collection(cid).setData({ status: "to-review", last_modified: postServerData.last_modified }, { patch: true });
+  await client.bucket(bucket).collection(cid).setData({ status: "to-review" }, { patch: true });
   console.log(`Added new record to ${cid}`, result);
 };
 
@@ -88,7 +82,7 @@ const printSuccessMessage = () => {
  *
  * @param {String[][]} sourceRecords Related realms from Apple's GitHub
  * @param {String[][]} destinationRecords Related realms from Remote Settings
- * @return {Boolean} `true` if there are new records, `false` if there are no new records 
+ * @return {Boolean} `true` if there are new records, `false` if there are no new records
  */
 const checkIfNewRelatedRealmsRecords = (sourceRecords, destinationRecords) => {
   let areNewRecords = false;
@@ -105,13 +99,13 @@ const checkIfNewRelatedRealmsRecords = (sourceRecords, destinationRecords) => {
 }
 
 /**
- * Converts the records from the "password-rules" Remote Settings collection into a Map 
+ * Converts the records from the "password-rules" Remote Settings collection into a Map
  * for easier comparison against the GitHub source of truth records.
  *
  * @param {Object[]} records
  * @param {string} records.Domain
  * @param {string} records[password-rules]
- * @return {Map} 
+ * @return {Map}
  */
 const passwordRulesRecordsToMap = (records) => {
   let map = new Map();
@@ -167,12 +161,7 @@ const createAndUpdateRulesRecords = async (client, bucket) => {
     }
   });
 
-  const postServerData = await collection.getData();
-  const setDataObject = {
-    status: "to-review",
-    last_modified: postServerData.last_modified
-  };
-  await collection.setData(setDataObject, { patch: true });
+  await collection.setData({ status: "to-review" }, { patch: true });
   if (batchRecords.length) {
     console.log(`Found new and/or updated records, committed changes to ${PASSWORD_RULES_COLLECTION_ID} collection.`);
   } else {
@@ -181,7 +170,7 @@ const createAndUpdateRulesRecords = async (client, bucket) => {
 };
 
 /**
- * Creates and/or updates the existing records in the "websites-with-shared-credential-backends" Remote Settings collection 
+ * Creates and/or updates the existing records in the "websites-with-shared-credential-backends" Remote Settings collection
  * with the updated data from Apple's GitHub repository.
  *
  * @param {KintoClient} client
@@ -213,7 +202,7 @@ const createAndUpdateRelatedRealmsRecords = async (client, bucket) => {
 
 /**
  * The runner for the script.
- * 
+ *
  * @return {Number} 0 for success, 1 for failure.
  */
 const main = async () => {
