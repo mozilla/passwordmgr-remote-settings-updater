@@ -1,4 +1,4 @@
-FROM node:14-slim
+FROM node:20-slim
 
 # add a non-privileged user for running the application
 RUN groupadd --gid 10001 app && \
@@ -17,5 +17,6 @@ COPY ./update-script.js /app
 COPY ./app-constants.js /app
 COPY ./version.json /app/version.json
 
-ENV PORT=8000
 USER app
+
+CMD ["node", "/app/update-script.js"]
