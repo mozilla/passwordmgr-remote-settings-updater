@@ -11,8 +11,37 @@ const AUTHORIZATION = AppConstants.AUTHORIZATION;
 /** @type {String} */
 const SERVER_ADDRESS = AppConstants.SERVER;
 const BUCKET = "main-workspace";
-const RELATED_REALMS_API_ENDPOINT = "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/websites-with-shared-credential-backends.json";
-const PASSWORD_RULES_API_ENDPOINT = "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/password-rules.json";
+const SHARED_CREDENTIALS_API_ENDPOINT =
+  "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/shared-credentials.json";
+const SHARED_CREDENTIALS_HISTORICAL_API_ENDPOINT =
+  "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/shared-credentials-historical.json";
+const PASSWORD_RULES_API_ENDPOINT =
+  "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/password-rules.json";
+
+/**
+ * Converts the shared-credentials.json and shared-credentials-historical.json from apple/password-manager-resources into the legacy
+ * format (previously contained in websites-with-shared-credential-backends.json) that firefox expects.
+ * Converted from ruby script here: https://github.com/apple/password-manager-resources/blob/9917b5c8/tools/convert-shared-credential-to-legacy-format.rb
+ */
+async function getSharedCredentialsLegacyFormat() {
+  const credentialEntries = await Promise.all([
+    getSourceRecords(SHARED_CREDENTIALS_API_ENDPOINT),
+    getSourceRecords(SHARED_CREDENTIALS_HISTORICAL_API_ENDPOINT),
+  ]);
+  const legacyOutput = [];
+
+  for (const entry of credentialEntries.flat()) {
+    if (entry.shared) {
+      legacyOutput.push(entry.shared);
+    } else if (entry.from && entry.to) {
+      legacyOutput.push(...entry.from, ...entry.to);
+    } else {
+      console.error("ERROR: Could not convert entry to legacy format.", entry);
+    }
+  }
+
+  return legacyOutput.sort();
+}
 
 /**
  * Fetches the source records from the apiEndpoint param
@@ -175,7 +204,7 @@ const createAndUpdateRulesRecords = async (client, bucket) => {
  */
 const createAndUpdateRelatedRealmsRecords = async (client, bucket) => {
   let { data: relatedRealmsData } = await client.bucket(bucket).collection(RELATED_REALMS_COLLECTION_ID).listRecords();
-  let realmsGithubRecords = await getSourceRecords(RELATED_REALMS_API_ENDPOINT);
+  let realmsGithubRecords = await getSharedCredentialsLegacyFormat();
   let id = relatedRealmsData[0]?.id;
   // If there is no ID from Remote Settings, we need to create a new record in the related realms collection
   if (!id) {
