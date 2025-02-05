@@ -34,7 +34,7 @@ async function getSharedCredentialsLegacyFormat() {
     if (entry.shared) {
       legacyOutput.push(entry.shared);
     } else if (entry.from && entry.to) {
-      legacyOutput.push(...entry.from, ...entry.to);
+      legacyOutput.push([...entry.from, ...entry.to]);
     } else {
       console.error("ERROR: Could not convert entry to legacy format.", entry);
     }
