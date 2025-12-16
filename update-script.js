@@ -5,6 +5,7 @@ const AppConstants = require("./app-constants");
 
 const RELATED_REALMS_COLLECTION_ID = "websites-with-shared-credential-backends";
 const PASSWORD_RULES_COLLECTION_ID = "password-rules";
+const CHANGE_PASSWORD_URLS_COLLECTION_ID = "change-password-urls";
 /** @type {String} */
 /** @type {String} */
 const AUTHORIZATION = AppConstants.AUTHORIZATION;
@@ -17,6 +18,8 @@ const SHARED_CREDENTIALS_HISTORICAL_API_ENDPOINT =
   "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/shared-credentials-historical.json";
 const PASSWORD_RULES_API_ENDPOINT =
   "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/password-rules.json";
+const CHANGE_PASSWORD_URLS_ENDPOINTS =
+  "https://raw.githubusercontent.com/apple/password-manager-resources/refs/heads/main/quirks/change-password-URLs.json";
 
 /**
  * Converts the shared-credentials.json and shared-credentials-historical.json from apple/password-manager-resources into the legacy
@@ -54,18 +57,20 @@ async function getSharedCredentialsLegacyFormat() {
 const getSourceRecords = async (apiEndpoint) => {
   const response = await fetch(apiEndpoint, {
     headers: {
-      "Accept": "application/vnd.github.v3.raw"
-    }
+      Accept: "application/vnd.github.v3.raw",
+    },
   });
   const data = await response.json();
   return data;
-}
+};
 
 const arrayEquals = (a, b) => {
-  return Array.isArray(a) &&
+  return (
+    Array.isArray(a) &&
     Array.isArray(b) &&
     a.length === b.length &&
-    a.every((val, index) => val === b[index]);
+    a.every((val, index) => val === b[index])
+  );
 };
 
 /**
@@ -80,7 +85,10 @@ const arrayEquals = (a, b) => {
 const updateRelatedRealmsRecord = async (client, bucket, newRecord) => {
   const cid = RELATED_REALMS_COLLECTION_ID;
   await client.bucket(bucket).collection(cid).updateRecord(newRecord);
-  await client.bucket(bucket).collection(cid).setData({ status: "to-review" }, { patch: true });
+  await client
+    .bucket(bucket)
+    .collection(cid)
+    .setData({ status: "to-review" }, { patch: true });
   console.log(`Found new records, committed changes to ${cid} collection.`);
 };
 
@@ -93,15 +101,18 @@ const updateRelatedRealmsRecord = async (client, bucket, newRecord) => {
 const createRelatedRealmsRecord = async (client, bucket, sourceRecords) => {
   const cid = RELATED_REALMS_COLLECTION_ID;
   const result = await client.bucket(bucket).collection(cid).createRecord({
-    relatedRealms: sourceRecords
+    relatedRealms: sourceRecords,
   });
-  await client.bucket(bucket).collection(cid).setData({ status: "to-review" }, { patch: true });
+  await client
+    .bucket(bucket)
+    .collection(cid)
+    .setData({ status: "to-review" }, { patch: true });
   console.log(`Added new record to ${cid}`, result);
 };
 
 const printSuccessMessage = () => {
   console.log("Script finished successfully!");
-}
+};
 
 /**
  * Determines if there are new records from the GitHub source for the "websites-with-shared-credential-backends" collection
@@ -122,7 +133,7 @@ const checkIfNewRelatedRealmsRecords = (sourceRecords, destinationRecords) => {
     areNewRecords = !arrayEquals(sourceRecords[i], destinationRecords[i]);
   }
   return areNewRecords;
-}
+};
 
 /**
  * Converts the records from the "password-rules" Remote Settings collection into a Map
@@ -140,7 +151,7 @@ const passwordRulesRecordsToMap = (records) => {
     map.set(domain, { id: id, "password-rules": rules });
   }
   return map;
-}
+};
 
 /**
  * Creates and/or updates the existing records in the "password-rules" Remote Settings collection with the updated data from Apple's GitHub repository
@@ -149,11 +160,15 @@ const passwordRulesRecordsToMap = (records) => {
  * @param {string} bucket Name of the Remote Settings bucket
  */
 const createAndUpdateRulesRecords = async (client, bucket) => {
-  let collection = client.bucket(bucket).collection(PASSWORD_RULES_COLLECTION_ID);
+  let collection = client
+    .bucket(bucket)
+    .collection(PASSWORD_RULES_COLLECTION_ID);
   let sourceRulesByDomain = await getSourceRecords(PASSWORD_RULES_API_ENDPOINT);
   let { data: remoteSettingsRecords } = await collection.listRecords();
   debugger;
-  let remoteSettingsRulesByDomain = passwordRulesRecordsToMap(remoteSettingsRecords);
+  let remoteSettingsRulesByDomain = passwordRulesRecordsToMap(
+    remoteSettingsRecords
+  );
   let batchRecords = [];
 
   for (let domain in sourceRulesByDomain) {
@@ -166,18 +181,21 @@ const createAndUpdateRulesRecords = async (client, bucket) => {
       oldRules = _record["password-rules"];
     }
     if (!id) {
-      let newRecord = { "Domain": domain, "password-rules": passwordRules };
+      let newRecord = { Domain: domain, "password-rules": passwordRules };
       batchRecords.push(newRecord);
       console.log("Added new record to batch!", newRecord);
     }
     if (id && oldRules !== passwordRules) {
-      let updatedRecord = { id, "Domain": domain, "password-rules": passwordRules };
+      let updatedRecord = {
+        id,
+        Domain: domain,
+        "password-rules": passwordRules,
+      };
       batchRecords.push(updatedRecord);
       console.log("Added updated record to batch!", updatedRecord);
     }
-
   }
-  await collection.batch(batch => {
+  await collection.batch((batch) => {
     for (let record of batchRecords) {
       if (record.id) {
         batch.updateRecord(record);
@@ -189,9 +207,13 @@ const createAndUpdateRulesRecords = async (client, bucket) => {
 
   await collection.setData({ status: "to-review" }, { patch: true });
   if (batchRecords.length) {
-    console.log(`Found new and/or updated records, committed changes to ${PASSWORD_RULES_COLLECTION_ID} collection.`);
+    console.log(
+      `Found new and/or updated records, committed changes to ${PASSWORD_RULES_COLLECTION_ID} collection.`
+    );
   } else {
-    console.log(`Found no new or updated records for the ${PASSWORD_RULES_COLLECTION_ID} collection.`);
+    console.log(
+      `Found no new or updated records for the ${PASSWORD_RULES_COLLECTION_ID} collection.`
+    );
   }
 };
 
@@ -203,7 +225,10 @@ const createAndUpdateRulesRecords = async (client, bucket) => {
  * @param {string} bucket
  */
 const createAndUpdateRelatedRealmsRecords = async (client, bucket) => {
-  let { data: relatedRealmsData } = await client.bucket(bucket).collection(RELATED_REALMS_COLLECTION_ID).listRecords();
+  let { data: relatedRealmsData } = await client
+    .bucket(bucket)
+    .collection(RELATED_REALMS_COLLECTION_ID)
+    .listRecords();
   let realmsGithubRecords = await getSharedCredentialsLegacyFormat();
   let id = relatedRealmsData[0]?.id;
   // If there is no ID from Remote Settings, we need to create a new record in the related realms collection
@@ -212,18 +237,76 @@ const createAndUpdateRelatedRealmsRecords = async (client, bucket) => {
   } else {
     // If there is an ID, we can compare the source and destination records
     let currentRecords = relatedRealmsData[0].relatedRealms;
-    let areNewRecords = checkIfNewRelatedRealmsRecords(realmsGithubRecords, currentRecords);
+    let areNewRecords = checkIfNewRelatedRealmsRecords(
+      realmsGithubRecords,
+      currentRecords
+    );
     // If there are new records, we need to update the data of the record using the current ID
     if (areNewRecords) {
       let newRecord = {
         id: id,
-        relatedRealms: realmsGithubRecords
+        relatedRealms: realmsGithubRecords,
       };
-      await updateRelatedRealmsRecord(client, bucket, newRecord)
+      await updateRelatedRealmsRecord(client, bucket, newRecord);
     } else {
-      console.log(`No new records! Not committing any changes to ${RELATED_REALMS_COLLECTION_ID} collection.`);
+      console.log(
+        `No new records! Not committing any changes to ${RELATED_REALMS_COLLECTION_ID} collection.`
+      );
     }
   }
+};
+
+/**
+ * Creates and/or updates the existing records in the "change-password-urls" Remote Settings collection
+ * with the updated data from Apple's GitHub repository.
+ *
+ * @param {KintoClient} client
+ * @param {string} bucket
+ */
+const createAndUpdateChangePasswordUrlsRecords = async (client, bucket) => {
+  let collection = client
+    .bucket(bucket)
+    .collection(CHANGE_PASSWORD_URLS_COLLECTION_ID);
+  let sourceRecords = await getSourceRecords(CHANGE_PASSWORD_URLS_ENDPOINTS);
+  let { data: remoteSettingsRecords } = await collection.listRecords();
+
+  const changePasswordUrlsMap = new Map();
+  for (let record of remoteSettingsRecords) {
+    changePasswordUrlsMap.set(record.host, record);
+  }
+
+  const batchRecords = [];
+
+  for (let host in sourceRecords) {
+    const collectionRecord = changePasswordUrlsMap.get(host);
+    const sourceUrl = sourceRecords[host];
+
+    if (collectionRecord) {
+      let updatedRecord = {
+        id: collectionRecord.id,
+        host: host,
+        url: sourceUrl,
+      };
+      batchRecords.push(updatedRecord);
+    } else {
+      let newRecord = {
+        host: host,
+        url: sourceUrl,
+      };
+      batchRecords.push(newRecord);
+    }
+  }
+
+  await collection.batch((batch) =>
+    batchRecords.forEach((record) => {
+      if (record.id) {
+        batch.updateRecord(record);
+      } else {
+        batch.createRecord(record);
+      }
+    })
+  );
+  await collection.setData({ status: "to-sign" }, { patch: true });
 };
 
 /**
@@ -239,12 +322,13 @@ const main = async () => {
   try {
     const client = new KintoClient(SERVER_ADDRESS, {
       headers: {
-        Authorization: "Basic " + btoa(AUTHORIZATION)
-      }
+        Authorization: "Basic " + btoa(AUTHORIZATION),
+      },
     });
 
     await createAndUpdateRelatedRealmsRecords(client, BUCKET);
     await createAndUpdateRulesRecords(client, BUCKET);
+    await createAndUpdateChangePasswordUrlsRecords(client, BUCKET);
   } catch (e) {
     console.error(e);
     return 1;
