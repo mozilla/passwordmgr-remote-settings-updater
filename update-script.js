@@ -257,6 +257,30 @@ const createAndUpdateRelatedRealmsRecords = async (client, bucket) => {
 };
 
 /**
+ * Returns true if the URL is valid (final response after redirects is 2XX).
+ * Times out after 10 seconds.
+ *
+ * @param {string} url
+ * @return {Promise<boolean>}
+ */
+const isUrlValid = async (url) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(url, {
+      method: "HEAD",
+      redirect: "follow",
+      signal: controller.signal,
+    });
+    return response.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+/**
  * Creates and/or updates the existing records in the "change-password-urls" Remote Settings collection
  * with the updated data from Apple's GitHub repository.
  *
@@ -275,37 +299,54 @@ const createAndUpdateChangePasswordUrlsRecords = async (client, bucket) => {
     changePasswordUrlsMap.set(record.host, record);
   }
 
+  const hosts = Object.keys(sourceRecords);
+  const validityResults = await Promise.allSettled(
+    hosts.map((host) => isUrlValid(sourceRecords[host]))
+  );
+
+  const validHosts = new Set();
   const batchRecords = [];
 
-  for (let host in sourceRecords) {
-    const collectionRecord = changePasswordUrlsMap.get(host);
+  for (let i = 0; i < hosts.length; i++) {
+    const host = hosts[i];
     const sourceUrl = sourceRecords[host];
+    const valid =
+      validityResults[i].status === "fulfilled" &&
+      validityResults[i].value === true;
 
+    if (!valid) {
+      console.warn(`Skipping invalid URL for host "${host}": ${sourceUrl}`);
+      continue;
+    }
+
+    validHosts.add(host);
+    const collectionRecord = changePasswordUrlsMap.get(host);
     if (collectionRecord) {
-      let updatedRecord = {
-        id: collectionRecord.id,
-        host: host,
-        url: sourceUrl,
-      };
-      batchRecords.push(updatedRecord);
+      batchRecords.push({ id: collectionRecord.id, host, url: sourceUrl });
     } else {
-      let newRecord = {
-        host: host,
-        url: sourceUrl,
-      };
-      batchRecords.push(newRecord);
+      batchRecords.push({ host, url: sourceUrl });
     }
   }
 
-  await collection.batch((batch) =>
+  const recordsToDelete = remoteSettingsRecords.filter(
+    (record) => !validHosts.has(record.host)
+  );
+  for (const record of recordsToDelete) {
+    console.warn(
+      `Deleting stale record for host "${record.host}": ${record.url}`
+    );
+  }
+
+  await collection.batch((batch) => {
     batchRecords.forEach((record) => {
       if (record.id) {
         batch.updateRecord(record);
       } else {
         batch.createRecord(record);
       }
-    })
-  );
+    });
+    recordsToDelete.forEach((record) => batch.deleteRecord(record));
+  });
   await collection.setData({ status: "to-sign" }, { patch: true });
 };
 
