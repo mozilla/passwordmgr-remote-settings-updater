@@ -260,9 +260,7 @@ const createAndUpdateRelatedRealmsRecords = async (client, bucket) => {
  * Checks if the URL is valid. Attempts verification with HEAD first; falls back to GET if HEAD fails.
  * Times out after 30 seconds per attempt.
  *
- * Valid:   2XX
- *          401 (URL exists, but blocked by authorization/login walls)
- *          403 (redirect count exceeded)
+ * Valid:   2XX, 401/403 (URL exists but has auth walls), redirect count exceeded
  * Invalid: any other HTTP status, timeout, or network error
  *
  * Note: results can be inconsistent across runs due to transient network
