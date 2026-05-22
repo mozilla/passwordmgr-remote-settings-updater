@@ -257,27 +257,53 @@ const createAndUpdateRelatedRealmsRecords = async (client, bucket) => {
 };
 
 /**
- * Returns true if the URL is valid (final response after redirects is 2XX).
- * Times out after 10 seconds.
+ * Checks if the URL is valid. Attempts verification with HEAD first; falls back to GET if HEAD fails.
+ * Times out after 30 seconds per attempt.
+ *
+ * Valid:   2XX
+ *          401 (URL exists, but blocked by authorization/login walls)
+ *          403 (redirect count exceeded)
+ * Invalid: any other HTTP status, timeout, or network error
+ *
+ * Note: results can be inconsistent across runs due to transient network
+ * conditions or bot detection.
  *
  * @param {string} url
- * @return {Promise<boolean>}
+ * @return {Promise<{valid: boolean, error?: string}>}
  */
 const isUrlValid = async (url) => {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
-  try {
-    const response = await fetch(url, {
-      method: "HEAD",
-      redirect: "follow",
-      signal: controller.signal,
-    });
-    return response.ok;
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(timeout);
-  }
+  const tryFetch = async (method) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    try {
+      const { ok, status } = await fetch(url, {
+        method,
+        redirect: "follow",
+        signal: controller.signal,
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; Firefox/120.0)" },
+      });
+      if (ok || status === 401 || status === 403) return { valid: true };
+      return { valid: false, error: `HTTP ${status}` };
+    } catch (e) {
+      if (e.name === "AbortError") return { valid: false, error: "timeout" };
+      const msg = e.cause?.message ?? e.message;
+      if (msg?.includes("redirect count exceeded")) return { valid: true };
+      return { valid: false, error: msg };
+    } finally {
+      clearTimeout(timeout);
+    }
+  };
+
+  const headResult = await tryFetch("HEAD");
+  if (headResult.valid) return headResult;
+
+  const getResult = await tryFetch("GET");
+  if (getResult.valid) return getResult;
+
+  return {
+    valid: false,
+    error: `HEAD: ${headResult.error}, GET: ${getResult.error}`,
+  };
 };
 
 /**
@@ -294,48 +320,88 @@ const createAndUpdateChangePasswordUrlsRecords = async (client, bucket) => {
   let sourceRecords = await getSourceRecords(CHANGE_PASSWORD_URLS_ENDPOINTS);
   let { data: remoteSettingsRecords } = await collection.listRecords();
 
+  console.log(`Apple source records: ${Object.keys(sourceRecords).length}`);
+  console.log(
+    `Mozilla Remote Settings records: ${remoteSettingsRecords.length}\n`,
+  );
+
   const changePasswordUrlsMap = new Map();
   for (let record of remoteSettingsRecords) {
     changePasswordUrlsMap.set(record.host, record);
   }
 
   const hosts = Object.keys(sourceRecords);
-  const validityResults = await Promise.allSettled(
-    hosts.map((host) => isUrlValid(sourceRecords[host]))
+  console.log(`Validating ${hosts.length} URLs from Apple source.`);
+  const validityResults = await Promise.all(
+    hosts.map((host) => isUrlValid(sourceRecords[host])),
   );
 
   const validHosts = new Set();
   const batchRecords = [];
+  const summary = {
+    new: 0,
+    updated: 0,
+    unchanged: 0,
+    deletedInvalid: 0,
+    deletedFromSource: 0,
+  };
 
   for (let i = 0; i < hosts.length; i++) {
     const host = hosts[i];
     const sourceUrl = sourceRecords[host];
-    const valid =
-      validityResults[i].status === "fulfilled" &&
-      validityResults[i].value === true;
+    const result = validityResults[i];
 
-    if (!valid) {
-      console.warn(`Skipping invalid URL for host "${host}": ${sourceUrl}`);
+    if (!result.valid) {
+      const reason = result.error ?? `HTTP ${result.status}`;
+      console.warn(`  [INVALID] "${host}" — ${sourceUrl} (${reason})`);
       continue;
     }
 
     validHosts.add(host);
     const collectionRecord = changePasswordUrlsMap.get(host);
     if (collectionRecord) {
+      if (collectionRecord.url !== sourceUrl) {
+        console.log(
+          `  [UPDATE] "${host}" — ${collectionRecord.url} → ${sourceUrl}`,
+        );
+        summary.updated++;
+      } else {
+        summary.unchanged++;
+      }
       batchRecords.push({ id: collectionRecord.id, host, url: sourceUrl });
     } else {
+      console.log(`  [NEW] "${host}" — ${sourceUrl}`);
+      summary.new++;
       batchRecords.push({ host, url: sourceUrl });
     }
   }
 
   const recordsToDelete = remoteSettingsRecords.filter(
-    (record) => !validHosts.has(record.host)
+    (record) => !validHosts.has(record.host),
   );
   for (const record of recordsToDelete) {
-    console.warn(
-      `Deleting stale record for host "${record.host}": ${record.url}`
-    );
+    const inSource = record.host in sourceRecords;
+    if (inSource) {
+      console.warn(`  [DELETE] "${record.host}" — ${record.url} (invalid URL)`);
+      summary.deletedInvalid++;
+    } else {
+      console.warn(
+        `  [DELETE] "${record.host}" — ${record.url} (not in Apple source)`,
+      );
+      summary.deletedFromSource++;
+    }
   }
+
+  const totalDeleted = summary.deletedInvalid + summary.deletedFromSource;
+  console.log(`
+=== Summary ===
+  New:       ${summary.new}
+  Updated:   ${summary.updated}
+  Unchanged: ${summary.unchanged}
+  Deleted:   ${totalDeleted} (invalid: ${summary.deletedInvalid}, not in Apple source: ${summary.deletedFromSource})
+  ---------------
+  Records in Mozilla Remote Settings collection: ${summary.new + summary.updated + summary.unchanged}
+`);
 
   await collection.batch((batch) => {
     batchRecords.forEach((record) => {
@@ -378,4 +444,4 @@ const main = async () => {
   return 0;
 };
 
-main();
+main().then((code) => process.exit(code ?? 0));
