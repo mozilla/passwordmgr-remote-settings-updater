@@ -12,6 +12,9 @@ const AUTHORIZATION = AppConstants.AUTHORIZATION;
 /** @type {String} */
 const SERVER_ADDRESS = AppConstants.SERVER;
 const BUCKET = "main-workspace";
+const DEV = "dev";
+/** @type {String} */
+const ENVIRONMENT = AppConstants.ENVIRONMENT;
 const SHARED_CREDENTIALS_API_ENDPOINT =
   "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/shared-credentials.json";
 const SHARED_CREDENTIALS_HISTORICAL_API_ENDPOINT =
@@ -20,6 +23,22 @@ const PASSWORD_RULES_API_ENDPOINT =
   "https://api.github.com/repos/apple/password-manager-resources/contents/quirks/password-rules.json";
 const CHANGE_PASSWORD_URLS_ENDPOINTS =
   "https://raw.githubusercontent.com/apple/password-manager-resources/refs/heads/main/quirks/change-password-URLs.json";
+
+/**
+ * Marks the collection's changes as ready for the next step of the signing workflow.
+ * The DEV server allows self-approval, so changes go straight to "to-sign";
+ * every other environment requires a reviewer, so changes go to "to-review".
+ *
+ * @param {Object} collection Kinto collection object
+ */
+const requestReview = async (collection) => {
+  if (ENVIRONMENT === DEV) {
+    // DEV allows self-approval
+    await collection.setData({ status: "to-sign" }, { patch: true });
+  } else {
+    await collection.setData({ status: "to-review" }, { patch: true });
+  }
+};
 
 /**
  * Converts the shared-credentials.json and shared-credentials-historical.json from apple/password-manager-resources into the legacy
@@ -411,7 +430,7 @@ const createAndUpdateChangePasswordUrlsRecords = async (client, bucket) => {
     });
     recordsToDelete.forEach((record) => batch.deleteRecord(record));
   });
-  await collection.setData({ status: "to-sign" }, { patch: true });
+  await requestReview(collection);
 };
 
 /**
