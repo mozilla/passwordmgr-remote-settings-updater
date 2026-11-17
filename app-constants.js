@@ -16,4 +16,7 @@ for (const v of environmentVariables) {
   AppConstants[v] = process.env[v];
 }
 
+// Optional: set to "dev" when targeting the DEV Remote Settings server, which allows self-approval.
+AppConstants.ENVIRONMENT = (process.env.ENVIRONMENT || "").toLowerCase();
+
 module.exports = Object.freeze(AppConstants);

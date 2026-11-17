@@ -8,6 +8,8 @@ The script will _not run_ without the following environment variables set in `.e
 - `AUTHORIZATION`
 - `SERVER`
 
+Optionally, set `ENVIRONMENT=dev` when targeting the DEV Remote Settings server. DEV allows self-approval, so changes to the `change-password-urls` collection are set to `to-sign` instead of `to-review`.
+
 To run this script:
 
 `$ node update-script.js`
